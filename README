@@ -86,21 +86,31 @@ For example,
 	var my_module = require('cn.named.service');
 	my_module.foo();
 
+before you use this module
+---------------------------------------------------------
+you need add something into your  tiapp.xml
+1、<service android:label="push service"  android:name="cn.named.service.CoreService" android:process=".pushservice"/>
+2、<receiver android:name="cn.named.service.MyReceiver">
+             <intent-filter>
+                    <action android:name="ELITOR_CLOCK"/>
+                    <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                    <category android:name="android.intent.category.LAUNCHER"/>
+              </intent-filter>
+    </receiver>
+3、 <receiver android:name="cn.test.service.DataReceiver"/> this be used to the tiapp get some datas from notification
+4、 <uses-permission android:name="android.permission.GET_TASKS"/>
+5、 <uses-permission android:name="android.permission.RECEIVE_USER_PRESENT"/>
+6、<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+7、<uses-permission android:name="android.permission.INTERNET"/>
 
-TESTING YOUR MODULE
--------------------
-
-To test with the script, execute:
-
-	titanium run --dir=YOURMODULEDIR
-
-This will execute the app.js in the example folder as a Titanium application.
-
-
-DISTRIBUTING YOUR MODULE
--------------------------
-
-You can choose to manually distribute your module distribution zip file or through the Titanium Marketplace!
-
-
-Cheers!
+about this module method
+-----------------------------------------------------------
+startService(String url)
+	url:websocket service address
+	this method will start service and websocket
+startApp()
+	this method will resume tiAPP from background
+clear()
+	this method will clear all push notification
+getServiceState()
+	this method will get your service's state
