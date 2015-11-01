@@ -1,0 +1,16 @@
+%define lookup-function-name lookupGeneratedInit
+%define class-name AndroidserviceBindings
+%{
+
+#include <string.h>
+#include <v8.h>
+#include <KrollBindings.h>
+
+#include "cn.named.service.AndroidserviceModule.h"
+
+
+%}
+struct titanium::bindings::BindEntry;
+%%
+cn.named.service.AndroidserviceModule, ::cn::named::service::AndroidserviceModule::bindProxy, ::cn::named::service::AndroidserviceModule::dispose
+%%
