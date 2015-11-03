@@ -24,10 +24,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
-
-@Kroll.module(name="Androidservice", id="cn.named.service")
-public class AndroidserviceModule extends KrollModule
-{
+@Kroll.module(name = "Androidservice", id = "cn.named.service")
+public class AndroidserviceModule extends KrollModule {
 
 	// Standard Debugging variables
 	private static final String LCAT = "SfrServiceModule";
@@ -35,61 +33,63 @@ public class AndroidserviceModule extends KrollModule
 	SharedPreferences mySharedPreferences;
 	SharedPreferences.Editor editor;
 
-	// You can define constants with @Kroll.constant, for example:
+	// You can define constants wi®th @Kroll.constant, for example:
 	// @Kroll.constant public static final String EXTERNAL_NAME = value;
 
-	public AndroidserviceModule()
-	{
+	public AndroidserviceModule() {
 		super();
 	}
 
 	@Kroll.onAppCreate
-	public static void onAppCreate(TiApplication app)
-	{
+	public static void onAppCreate(TiApplication app) {
 		Log.d(LCAT, "inside onAppCreate");
-		// put module init code that needs to run when the application is created
+		// put module init code that needs to run when the application is
+		// created
 	}
 
 	// Methods
 	@Kroll.method
-	public String example()
-	{
+	public String example() {
 		Log.d(LCAT, "example called");
 		return "hello world";
 	}
 
 	// Properties
 	@Kroll.getProperty
-	public String getExampleProp()
-	{
+	public String getExampleProp() {
 		Log.d(LCAT, "get example property");
 		return "hello world";
 	}
-
 
 	@Kroll.setProperty
 	public void setExampleProp(String value) {
 		Log.d(LCAT, "set example property: " + value);
 	}
-	
+
 	@Kroll.method
 	public void startService(String url) {
 		mySharedPreferences = TiApplication.getAppCurrentActivity()
 				.getSharedPreferences("named", Context.MODE_PRIVATE);
 		// 实例化SharedPreferences.Editor对象（第二步）
 		editor = mySharedPreferences.edit();
-		
+		Log.d("SfrServiceModule",
+				"文件中得URl：" + mySharedPreferences.getString("url", "") + " 传参："
+						+ url);
 		Intent intent = new Intent(TiApplication.getAppCurrentActivity(),
 				CoreService.class);
-		if(!mySharedPreferences.getString("url", "").equals(url) && isWorked()){
-			//当url改变的时候，且service在运行，则停掉service，然后再启动，连接websocket
-			TiApplication.getInstance().stopService(intent);			
+		if (!mySharedPreferences.getString("url", "").equals(url) && isWorked()) {
+			// 当url改变的时候，且service在运行，则停掉service，然后再启动，连接websocket
+			TiApplication.getInstance().stopService(intent);
 		}
-		
+		Log.d("SfrServiceModule", "实际URl：" + url);
+
 		// 用putString的方法保存数据
 		editor.putString("url", url);
 		// 提交当前数据
 		editor.commit();
+		intent.putExtra("url", url);
+		Log.d("SfrServiceModule",
+				"检查URl：" + mySharedPreferences.getString("url", ""));
 		TiApplication.getInstance().startService(intent);
 	}
 
@@ -114,7 +114,7 @@ public class AndroidserviceModule extends KrollModule
 	public boolean getServiceState() {
 		return isWorked();
 	}
-		
+
 	public static boolean isWorked() {
 		ActivityManager myManager = (ActivityManager) TiApplication
 				.getAppCurrentActivity().getSystemService(
@@ -131,4 +131,3 @@ public class AndroidserviceModule extends KrollModule
 	}
 
 }
-

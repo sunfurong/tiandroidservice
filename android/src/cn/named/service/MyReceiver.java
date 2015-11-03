@@ -19,12 +19,17 @@ public class MyReceiver extends BroadcastReceiver {
 		cont = context;
 		Log.d(TAG, "onclock......................");
 		Intent i = new Intent(context, CoreService.class);
+//		 Log.d(TAG, "intentCloack!"+intent.getp+"asdfasdf"+context.getPackageName());
+
 		boolean isRunning = isWorked();
-		if (isRunning) {
-			Log.d(TAG, "run!");
-		} else {
-			Log.d(TAG, "stop!");
-			context.startService(i);
+
+		if (intent.getAction().equals("NAMED_ELITOR_CLOCK")) {
+			if (isRunning) {
+				Log.d(TAG, "run!");
+			} else {
+				Log.d(TAG, "stop!");
+				context.startService(i);
+			}
 		}
 	}
 
