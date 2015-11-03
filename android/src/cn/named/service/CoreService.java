@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import org.appcelerator.titanium.TiApplication;
+import org.appcelerator.titanium.io.TitaniumBlob;
 import org.appcelerator.titanium.util.TiRHelper;
 import org.appcelerator.titanium.util.TiRHelper.ResourceNotFoundException;
 import org.json.JSONArray;
@@ -29,6 +30,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
@@ -36,7 +38,7 @@ import android.view.View.OnClickListener;
 
 public class CoreService extends Service implements Serializable {
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 1L;
 	public static final String TAG = "SfrServiceModule";
@@ -53,12 +55,13 @@ public class CoreService extends Service implements Serializable {
 	// private static String uri="ws://192.168.1.176:8811";
 	static NotificationManager notificationManager;
 	static int sum = 0;
-	private static WindowsNotification windowsNotification;
+	private WindowsNotification windowsNotification;
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
-
+		notificationManager = (NotificationManager) this
+				.getSystemService(NOTIFICATION_SERVICE);
 		// 实例化SharedPreferences对象（第一步）
 		mySharedPreferences = TiApplication.getInstance()
 				.getApplicationContext()
@@ -70,17 +73,67 @@ public class CoreService extends Service implements Serializable {
 		amStart();
 		Log.d(TAG, "onCreate() executed");
 
-		// windowsNotification = new WindowsNotification();
-		// windowsNotification.CreateWindowNotification(this, "", "",
-		// 		new OnClickListener() {
+		windowsNotification = new WindowsNotification();
+		windowsNotification.CreateWindowNotification(this, "", "",
+				new OnClickListener() {
 
-		// 			public void onClick(View arg0) {
-		// 				// Toast.makeText(getApplicationContext(),
-		// 				// "asdfsadfasdf", 1).show();
-		// 				// windowsNotification.showWindowsNotification(false);
-		// 			}
-		// 		});
-		// windowsNotification.showWindowsNotification(false);
+					public void onClick(View arg0) {
+						Log.d("SfrServiceModule", "0.1");
+						JSONArray datas = windowsNotification.datas;
+						Log.d("SfrServiceModule", "0.2");
+						Intent mIntent = new Intent(
+								"cn.named.service.DataReceiver");
+						Log.d("SfrServiceModule", "0.3");
+						mIntent.putExtra("datas", datas.toString());
+						Log.d("SfrServiceModule", "0.4");
+						Intent resultIntent = new Intent(Intent.ACTION_MAIN);
+						resultIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+						Log.d("SfrServiceModule", "0.5");
+						// 包名，类名
+						ComponentName cn = new ComponentName("cn.baoz",
+								"cn.baoz.NameActivity");
+						Log.d("SfrServiceModule", "0.6");
+						// ComponentName cn = new ComponentName("alarm.test",
+						// "alarm.test.AlarmtestActivity");
+						Bundle bundle = new Bundle();
+
+						bundle.putString("datas", datas.toString());
+						resultIntent.setComponent(cn);
+						resultIntent.putExtras(bundle);
+						Log.d("SfrServiceModule", "1.7");
+						Intent pIntent = null;
+						if (getAppIsRunning(CoreService.this)) {
+							pIntent = mIntent;
+							Log.d("SfrServiceModule", "0.8");
+							sendBroadcast(pIntent);
+						} else {
+							Log.d("SfrServiceModule", "0.9");
+							pIntent = resultIntent;
+							pIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+							getApplication().startActivity(pIntent);
+						}
+						handler.post(new Runnable() {
+
+							@Override
+							public void run() {
+								if (notificationManager != null) {
+									notificationManager.cancelAll();
+								}
+
+								windowsNotification
+										.showWindowsNotification(false);
+							}
+						});
+
+						Log.d("SfrServiceModule", "0.7");
+
+						Log.d(TAG,
+								"click_________"
+										+ windowsNotification.datas.toString());
+
+					}
+				}, null);
+		windowsNotification.showWindowsNotification(false);
 	}
 
 	@Override
@@ -89,21 +142,45 @@ public class CoreService extends Service implements Serializable {
 		flags = START_STICKY;
 		super.onStartCommand(intent, flags, startId);
 		Log.d(TAG, "onStartCommand() executed");
+
 		// 判断是否需要自启动websocket还是通过接口启动websocket
-		if (mySharedPreferences.getString("url", "").length() > 0) {
+		String newUrl = "";
+		if (intent != null) {
+			Log.d("SfrServiceModule", "editor");
+
+ 	newUrl = intent.getStringExtra("url");
+
+			Log.d("SfrServiceModule", newUrl);
+			// 用putString的方法保存数据
+			editor.putString("url", newUrl);
+			// 提交当前数据
+			editor.commit();
+		} else {
+			Log.d("SfrServiceModule", "intent=null");
+			newUrl = mySharedPreferences.getString("url", "");
+
+		}
+		Log.d("SfrServiceModule", newUrl);
+		if (newUrl.length() > 0) {
 			try {
-				wsclient = WSClient
-						.wsStart(
-								new URI(mySharedPreferences
-										.getString("url", "")), this);
-				wsStart("xxxx");
+
+				if (wsclient == null) {
+					Log.d("SfrServiceModule", "wsclient Call 0.14");
+					Log.d("SfrServiceModule", newUrl);
+					wsclient = new WSClient(new URI(newUrl), this);
+				} else {
+					Log.d("SfrServiceModule", newUrl);
+					Log.d("SfrServiceModule", "wsclient Call 0.24");
+					wsclient = wsclient
+							.wsClientChangeUri(new URI(newUrl), this);
+				}
+				wsStart("named");
 			} catch (Exception e) {
 				Log.d(TAG, "coreservice connect websocket error:" + e);
-				e.printStackTrace();
+				// e.printStackTrace();
 			}
 		}
-		notificationManager = (NotificationManager) this
-				.getSystemService(NOTIFICATION_SERVICE);
+
 		notificationManager.cancelAll();
 		return START_STICKY;
 	}
@@ -111,6 +188,9 @@ public class CoreService extends Service implements Serializable {
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
+		if (wsclient != null) {
+			wsclient.close();
+		}
 		Log.d(TAG, "onDestroy() executed");
 	}
 
@@ -119,13 +199,16 @@ public class CoreService extends Service implements Serializable {
 		return null;
 	}
 
-	public static void sendNotify(JSONArray datas, Context context)
-			throws JSONException {
+	static Handler handler = new Handler();
+
+	public void sendNotify(final JSONArray datas) throws JSONException {
+		Log.d("SfrServiceModule", "0.1");
+
 		for (int i = 0; i < datas.length(); i++) {
 			sum++;
 			JSONObject obj = datas.getJSONObject(i);
 			String title = obj.getString("title");
-			String content = obj.getString("content");
+			final String content = obj.getString("content");
 			Intent mIntent = new Intent("cn.named.service.DataReceiver");
 
 			mIntent.putExtra("datas", datas.toString());
@@ -151,46 +234,50 @@ public class CoreService extends Service implements Serializable {
 				Log.d(TAG, "icon error");
 				e.printStackTrace();
 			}
-
-			PendingIntent pIntent1 = PendingIntent.getActivity(context,
-					sum % 10, resultIntent, PendingIntent.FLAG_CANCEL_CURRENT);
-			PendingIntent pIntent2 = PendingIntent.getBroadcast(context,
-					sum % 10, mIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+			Log.d("SfrServiceModule", "22");
+			PendingIntent pIntent1 = PendingIntent.getActivity(this, sum % 10,
+					resultIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+			PendingIntent pIntent2 = PendingIntent.getBroadcast(this, sum % 10,
+					mIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 			PendingIntent pIntent;
-			if (getAppIsRunning(context)) {
+			if (getAppIsRunning(this)) {
 				pIntent = pIntent2;
 			} else {
 				pIntent = pIntent1;
 			}
 			Bitmap icon = BitmapFactory.decodeResource(TiApplication
 					.getInstance().getResources(), incon_id);
-			Notification noti = new Notification.Builder(context)
+			Notification noti = new Notification.Builder(this)
 					.setLargeIcon(icon).setSmallIcon(incon_sid)
 					.setContentInfo("消息").setContentTitle(title)
 					.setContentText(content).setContentIntent(pIntent)
 					.setAutoCancel(false).setDefaults(Notification.DEFAULT_ALL)
 					.setWhen(System.currentTimeMillis()).build();
-			// 用来监听消息被删掉的广播，需要在配置receiver
-			// Intent dismissedIntent = new Intent("cn.named.service.notify");
-			// noti.deleteIntent = PendingIntent.getBroadcast(context,
-			// 0,dismissedIntent, 0);
-			// notificationManager = (NotificationManager)
-			// context.getSystemService(NOTIFICATION_SERVICE);
-			// hide the notification after its selected
 			noti.flags |= Notification.FLAG_AUTO_CANCEL;
 			notificationManager.notify(sum % 10, noti);
 
-//			SimpleDateFormat format = new SimpleDateFormat("a hh:mm");
-//			String t = format.format(new Date());
-//			WindowsNotification.ReflushWindowsNotification(content, t);
-//			WindowsNotification.showWindowsNotification(true);
+			SimpleDateFormat format = new SimpleDateFormat("a hh:mm");
+			final String t = format.format(new Date());
+
+			handler.post(new Runnable() {
+
+				@Override
+				public void run() {
+					if (windowsNotification != null) {
+						windowsNotification.ReflushWindowsNotification(content,
+								t, datas);
+						windowsNotification.showWindowsNotification(true);
+					}
+
+				}
+			});
 
 		}
 	}
 
 	// 时钟自启动
 	public void amStart() {
-		Intent intent = new Intent("ELITOR_CLOCK");
+		Intent intent = new Intent("NAMED_ELITOR_CLOCK");
 		PendingIntent pi = PendingIntent.getBroadcast(this, 0, intent, 0);
 		// AlarmManager对象,注意这里并不是new一个对象，Alarmmanager为系统级服务
 		AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
@@ -201,8 +288,10 @@ public class CoreService extends Service implements Serializable {
 
 	public void wsStart(String str) throws URISyntaxException,
 			InterruptedException, IOException {
+		Log.d("SfrServiceModule", "wsclient Call 0.4");
 		wsclient.connectBlocking();
 		wsclient.send(str);
+		Log.d("SfrServiceModule", "wsclient Call 0.5");
 	}
 
 	public static boolean getAppIsRunning(Context cont) {
